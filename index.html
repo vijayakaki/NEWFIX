@@ -5303,6 +5303,8 @@ out center;`;
 
                 // Fetch both EJV values from the new combined endpoint
                 let ejvData = null;
+                let programmaticEjv = null;
+                let aiAssistedEjv = null;
                 try {
                     const combinedResponse = await fetch(`/api/ejv/simple/${storeId}?zip=${useZip}&location=${encodeURIComponent(storeName)}&name=${encodeURIComponent(storeName)}`, {
                         method: 'GET',
@@ -5313,9 +5315,13 @@ out center;`;
                     if (combinedResponse.ok) {
                         const combinedData = await combinedResponse.json();
                         console.log('✓ Got combined EJV response:', combinedData);
+                        programmaticEjv = combinedData.programmatic_ejv;
+                        aiAssistedEjv = combinedData.ai_assisted_ejv;
+                        // Use programmatic EJV as the main ejvData structure
                         ejvData = {
-                            programmatic_ejv: combinedData.programmatic_ejv,
-                            ai_assisted_ejv: combinedData.ai_assisted_ejv
+                            ...programmaticEjv,
+                            programmatic_ejv: programmaticEjv,
+                            ai_assisted_ejv: aiAssistedEjv
                         };
                     } else {
                         console.warn('⚠️ Could not fetch combined EJV values');
@@ -5379,6 +5385,15 @@ out center;`;
                             ejv_score: 0.55,
                             ejv_percentage: 55.0,
                             note: 'Programmatic EJV 4.0 unavailable, using fallback'
+                        },
+                        // Add fallback EJV values for display
+                        programmatic_ejv: {
+                            ejv_score: fallbackEjvScore / 100,
+                            ejv_percentage: fallbackEjvScore
+                        },
+                        ai_assisted_ejv: {
+                            ejv_score: (fallbackEjvScore + 2) / 100,
+                            ejv_percentage: fallbackEjvScore + 2
                         }
                     };
                     console.log('⚠️ Using fallback data with EJV 4.0:', ejv40Data ? 'REAL DATA' : 'MOCK DATA');
@@ -5408,7 +5423,10 @@ out center;`;
                     zip_analysis: {
                         unemployment_rate: ejvData.local_context?.unemployment_rate || 5.0,
                         median_income: ejvData.local_context?.median_income || 50000
-                    }
+                    },
+                    // Include both EJV values for display
+                    programmatic_ejv: ejvData.programmatic_ejv || null,
+                    ai_assisted_ejv: ejvData.ai_assisted_ejv || null
                 };
 
                 console.log('📊 Structured EJV Data for display:', data);
