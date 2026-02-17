@@ -2209,7 +2209,7 @@
                     <div id="mainMetricsGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
                         <div style="background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%); padding: 10px; border-radius: 6px; text-align: center; border: 2px solid #667eea; position: relative;">
                             <div style="position: absolute; top: 5px; left: 5px; background: #4caf50; color: white; padding: 2px 6px; border-radius: 10px; font-size: 7px; font-weight: 700;">📊 PROGRAMMATIC</div>
-                            <div id="ejvV41Display" style="font-size: 20px; font-weight: 700; color: #667eea;">-</div>
+                            <div id="ejvV41ProgDisplay" style="font-size: 20px; font-weight: 700; color: #667eea;">-</div>
                             <div style="font-size: 9px; color: #4c51bf; margin-top: 2px; text-transform: uppercase; font-weight: 600;">
                                 EJV 4.1 (6 Components)
                             </div>
@@ -2217,7 +2217,7 @@
                         </div>
                         <div style="background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%); padding: 10px; border-radius: 6px; text-align: center; border: 2px solid #ff9800; position: relative;">
                             <div style="position: absolute; top: 5px; left: 5px; background: #ff9800; color: white; padding: 2px 6px; border-radius: 10px; font-size: 7px; font-weight: 700;">🤖 AI-ASSISTED</div>
-                            <div id="ejvV41Display" style="font-size: 20px; font-weight: 700; color: #ff9800;">-</div>
+                            <div id="ejvV41AIDisplay" style="font-size: 20px; font-weight: 700; color: #ff9800;">-</div>
                             <div style="font-size: 9px; color: #ff9800; margin-top: 2px; text-transform: uppercase; font-weight: 600;">
                                 EJV 4.1 (AI Estimate)
                             </div>
@@ -5300,69 +5300,28 @@ out center;`;
                 
                 console.log('🔍 AI API Response status:', response.status);
                 
-                // Also fetch EJV 4.0 (programmatic) from the regular endpoint
-                let ejv40Data = null;
+
+                // Fetch both EJV values from the new combined endpoint
+                let ejvData = null;
                 try {
-                    console.log('Fetching programmatic EJV 4.0 (5-component weighted)...');
-                    const ejv40Response = await fetch(`/api/ejv/simple/${storeId}?zip=${useZip}&location=${encodeURIComponent(storeName)}&name=${encodeURIComponent(storeName)}`, {
+                    const combinedResponse = await fetch(`/api/ejv/simple/${storeId}?zip=${useZip}&location=${encodeURIComponent(storeName)}&name=${encodeURIComponent(storeName)}`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json'
                         }
                     });
-                    
-                    if (ejv40Response.ok) {
-                        ejv40Data = await ejv40Response.json(); // This IS the EJV 4.0 data directly
-                        console.log('✓ Got programmatic EJV 4.0 (5 components):', ejv40Data);
-                    } else {
-                        console.warn('⚠️ Could not fetch programmatic EJV 4.0');
-                    }
-                } catch (ejv40Error) {
-                    console.warn('⚠️ EJV 4.0 fetch error:', ejv40Error.message);
-                }
-                
-                console.log('🔍 Response OK?:', response.ok);
-                
-                // Get real data from API
-                let ejvData;
-                if (response.ok) {
-                    try {
-                        const apiResponse = await response.json();
-                        console.log('✓ Using AI-Assisted EJV 4.1 calculation from backend API');
-                        console.log('📦 AI EJV 4.1 Raw API Response:', JSON.stringify(apiResponse, null, 2));
-                        
-                        // Map AI response to expected format
+                    if (combinedResponse.ok) {
+                        const combinedData = await combinedResponse.json();
+                        console.log('✓ Got combined EJV response:', combinedData);
                         ejvData = {
-                            ejv_version: "EJV 4.1 (AI-Assisted)",
-                            ejv_score: apiResponse.ejv_41_score,
-                            ejv_percentage: apiResponse.ejv_41_score,
-                            components: apiResponse.components,
-                            component_details: {},
-                            economic_impact: {
-                                elvr: apiResponse.wealth_retention.retained_percentage,
-                                evl: 100 - apiResponse.wealth_retention.retained_percentage,
-                                retention_percent: apiResponse.wealth_retention.retained_percentage
-                            },
-                            formula: "EJV 4.1 = (LC + W + DN + EQ + ENV + PROC) / 6 (AI Estimated)",
-                            data_sources: ["AI-Assisted Estimation based on industry patterns"],
-                            local_context: {
-                                confidence: apiResponse.confidence,
-                                reasoning: apiResponse.reasoning
-                            },
-                            ejv_original: ejv40Data || {
-                                ejv_score: apiResponse.ejv_41_score / 100,
-                                ejv_percentage: apiResponse.ejv_41_score,
-                                note: 'Programmatic EJV 4.0 unavailable, using AI estimate as fallback'
-                            }
+                            programmatic_ejv: combinedData.programmatic_ejv,
+                            ai_assisted_ejv: combinedData.ai_assisted_ejv
                         };
-                        console.log('✅ ejvData assigned with EJV 4.0 (Programmatic):', ejv40Data ? 'REAL DATA' : 'FALLBACK');
-                        console.log('✅ ejvData assigned:', ejvData);
-                    } catch (parseError) {
-                        console.error('❌ Error parsing API response:', parseError);
-                        // Don't return null - use fallback instead
-                        console.warn('⚠️ Parse error, falling through to fallback data');
-                        ejvData = null; // Will trigger fallback below
+                    } else {
+                        console.warn('⚠️ Could not fetch combined EJV values');
                     }
+                } catch (err) {
+                    console.warn('⚠️ Combined EJV fetch error:', err.message);
                 }
                 
                 // If API failed or parse error, use fallback
@@ -5779,29 +5738,18 @@ out center;`;
             // Main EJV scores
             console.log('About to set displays - ejvV2Baseline:', ejvV2Baseline, 'elvr:', elvr);
             
-            const v2Display = document.getElementById('ejvV2Display');
-            const v41Display = document.getElementById('ejvV41Display');
-            
-            // Set EJV 4.1 score (0-100)
-            if (v41Display) {
-                const v41Value = ejvV2Baseline > 0 ? ejvV2Baseline.toFixed(2) : '-';
-                v41Display.textContent = v41Value;
-                v41Display.parentElement.style.background = impactBg;
-                v41Display.parentElement.style.borderColor = impactBorder;
-                v41Display.style.color = impactColor;
-                console.log('Set ejvV41Display to:', v41Value);
-            } else {
-                console.error('ERROR: ejvV41Display element not found!');
+            const v41ProgDisplay = document.getElementById('ejvV41ProgDisplay');
+            const v41AIDisplay = document.getElementById('ejvV41AIDisplay');
+
+            // Set EJV 4.1 Programmatic (0-100)
+            if (v41ProgDisplay && data.programmatic_ejv) {
+                const progValue = (data.programmatic_ejv.ejv_percentage || data.programmatic_ejv.ejv_score * 100).toFixed(2);
+                v41ProgDisplay.textContent = progValue;
             }
-            
-            // Set original EJV score (0-100%)
-            if (v2Display) {
-                const originalScore = data.ejv_original?.ejv_percentage || (data.ejv_original?.ejv_score * 100) || 0;
-                const v2Value = originalScore > 0 ? originalScore.toFixed(1) + '%' : '-';
-                v2Display.textContent = v2Value;
-                console.log('Set ejvV2Display to:', v2Value, '(original EJV score)');
-            } else {
-                console.error('ERROR: ejvV2Display element not found!');
+            // Set EJV 4.1 AI-Assisted (0-100)
+            if (v41AIDisplay && data.ai_assisted_ejv) {
+                const aiValue = (data.ai_assisted_ejv.ejv_percentage || data.ai_assisted_ejv.ejv_score * 100).toFixed(2);
+                v41AIDisplay.textContent = aiValue;
             }
             
             console.log('Display values set - check screen');
