@@ -2166,6 +2166,12 @@ def serve_login():
     """Serve the login page"""
     return send_file('login-simple.html')
 
+@app.route('/FIX%24%20logo.png', methods=['GET'])
+@app.route('/FIX$ logo.png', methods=['GET'])
+def serve_logo():
+    """Serve the logo file"""
+    return send_file('FIX$ logo.png', mimetype='image/png')
+
 
 
 @app.route('/api/stores/demo', methods=['GET'])
