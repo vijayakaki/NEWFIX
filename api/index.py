@@ -30,6 +30,8 @@ except Exception as e:
 @app.route('/api/ai/status', methods=['GET'])
 def status():
     return jsonify({
+from ai_assistant import register_ai_routes
+register_ai_routes(app)
         'openai_available': openai_client is not None,
         'claude_available': anthropic_client is not None
     })
